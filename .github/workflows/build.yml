@@ -7,39 +7,40 @@ jobs:
     runs-on: ubuntu-latest
     container: devkitpro/devkita64_devkitarm
     steps:
-      - name: env
+      - name: build - test
         run: |
-          cat /proc/cpuinfo
-          free -m
-      - name: checkout - project
-        uses: actions/checkout@v1
-        with:
-          submodules: recursive
-          fetch-depth: 1
-      - name: deps - libnx
-        run: |
-          git clone https://github.com/switchbrew/libnx.git /tmp/libnx
-          make -C /tmp/libnx install -j4
-      - name: deps - ams libs
-        run: |
-          make -C lib/ams/libstratosphere -j4
-
-      - name: build - FEAT_ALL
-        run: |
-          make clean
-          make FEAT_ALL="Y" -j4
-      - name: store - FEAT_ALL
+          echo "test1" > test.txt
+      - name: store - test
         uses: actions/upload-artifact@v2
         with:
-          name: sys-tweak.nsp
-          path: out/sys-tweak.nsp
-
-      - name: build - FEAT_ALL TOGL_LOGGING
+          name: test.txt
+          path: test.txt
+      - name: build - test2
         run: |
-          make clean
-          make FEAT_ALL="Y" TOGL_LOGGING="Y" -j4
-      - name: store - FEAT_ALL TOGL_LOGGING
+          echo "test2" > test2.txt
+      - name: store - test2
         uses: actions/upload-artifact@v2
         with:
-          name: sys-tweak_log.nsp
-          path: out/sys-tweak.nsp
+          name: test2.txt
+          path: test2.txt
+  nightly:
+    needs: [container-build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/ci'
+    steps:
+      - name: Download all workflow run artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: ./artifacts_raw
+      - name: Flatten artifacts tree
+        run: |
+          mkdir artifacts
+          find ./artifacts_raw -type f -exec mv {} ./artifacts \;
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Latest successful build"
+          files: |
+            artifacts/*
